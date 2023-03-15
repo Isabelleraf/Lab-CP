@@ -1,0 +1,61 @@
+/*Considere o seguinte código na linguagem C para o cálculo do fatorial:
+
+# include <stdio.h>
+
+int main()
+{
+   int i, num, j;
+   printf ("Enter the number: ");
+   scanf ("%d", &num);
+   j = num;
+
+   for (i=1; j > 1; j = j -1) {
+         i=i*j;
+   }
+
+   printf("The factorial of %d is %d\n",num,i);
+}
+Implemente a versão multiprocessada do cálculo do fatorial e compare o tempo de execução com a versão serial.
+
+Obs.: Não coloque dentro do seu código nenhuma chamada que calcule o tempo, como a inclusão da biblioteca time.h
+
+*/
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <sys/wait.h>
+
+int main(void) {
+  int num, np, i, j;
+  pid_t pid;
+  long long int fat = 1, par_fat = 1;
+
+  printf("Digite um numero: ");
+  scanf("%d", &num);
+  printf("Digite o numero de processos: ");
+  scanf("%d", &np);
+
+  for(i=0; i<np; i++){
+    pid = fork();
+    if(pid < 0){
+      printf("ERRO \n");
+      exit(1);
+    }else if(pid == 0){
+      int start = i* (num / np) + 1; 
+      int end = (i == np - 1) ? num : (i + 1) * (num / np);
+      for (j = start; j <= end; j++){
+        par_fat *= j;
+      }
+      exit(par_fat);
+      }
+  }
+  for(i=0; i<np; i++){
+    int status;
+    wait(&status);
+    par_fat = WEXITSTATUS(status);
+    fat *= par_fat;
+  }
+  printf("O fatorial de %d é %lld\n", num, fat); 
+  return 0;
+}
