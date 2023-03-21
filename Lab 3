@@ -1,0 +1,74 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <sys/types.h>
+#include <sys/ipc.h>
+#include <sys/shm.h>
+
+#define SHM_SIZE 1024
+
+int main()
+{
+    int shm_id;
+    key_t key = 1234;
+    int *shared_int;
+    int pid;
+
+    // Aloca uma região de memória compartilhada
+    shm_id = shmget(key, SHM_SIZE, IPC_CREAT | 0666);
+    if (shm_id == -1) {
+        perror("shmget");
+        exit(1);
+    }
+
+    // Anexa a região de memória compartilhada ao processo
+    shared_int = shmat(shm_id, NULL, 0);
+    if (shared_int == (int *) -1) {
+        perror("shmat");
+        exit(1);
+    }
+
+    // Define o valor inicial da variável compartilhada
+    *shared_int = 1;
+
+    // Cria um novo processo
+    pid = fork();
+    if (pid == -1) {
+        perror("fork");
+        exit(1);
+    }
+
+    if (pid == 0) {
+        // Código do processo filho
+        printf("Processo filho: valor inicial = %d\n", *shared_int);
+
+        // Modifica o valor da variável compartilhada
+        *shared_int += 2;
+        printf("Processo filho: novo valor = %d\n", *shared_int);
+
+        // Desanexa a região de memória compartilhada do processo filho
+        shmdt(shared_int);
+
+        // Termina o processo filho
+        exit(0);
+    } else {
+        // Código do processo pai
+
+        // Espera pelo processo filho
+        wait(NULL);
+
+        // Modifica o valor da variável compartilhada novamente
+        *shared_int *= 4;
+
+        // Imprime o novo valor da variável compartilhada
+        printf("Processo pai: novo valor = %d\n", *shared_int);
+
+        // Desanexa a região de memória compartilhada do processo pai
+        shmdt(shared_int);
+
+        // Libera a região de memória compartilhada
+        shmctl(shm_id, IPC_RMID, NULL);
+    }
+
+    return 0;
+}
